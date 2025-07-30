@@ -30,16 +30,6 @@ export const saveComment = async (req, res) => {
     }
 };
 
-export const getSummaries = async (req, res) => {
-    try {
-        await pool.query("SELECT * FROM summaries"); //TODO: may update this query
-        res.status(200).json({ message: "Retrieved summaries!" });
-    } catch (error) {
-        console.log("Get summaries error:", error);
-        res.status(500).json({ error: "Error getting summaries." });
-    }
-};
-
 export const summarizeComments = async (req, res) => {
     const district = req.query.district;
 
@@ -68,6 +58,13 @@ export const summarizeComments = async (req, res) => {
 
         const summary = completion.choices[0].message.content?.trim();
 
+        pool.query(
+            `INSERT INTO summaries (district, summary, last_updated) VALUES ($1, $2, now())
+            ON CONFLICT (district) DO UPDATE
+            SET summary = $2, last_updated = now() `,
+            [district, summary]
+        );
+
         res.json({ district, summary });
     } catch (error) {
         console.log("OpenAI Summary Error", error);
@@ -75,7 +72,14 @@ export const summarizeComments = async (req, res) => {
     }
 };
 
-router.post("/", saveComment);
-router.get("/summary", summarizeComments);
+export const getSummaries = async (req, res) => {
+    try {
+        await pool.query("SELECT * FROM summaries"); //TODO: may update this query
+        res.status(200).json({ message: "Retrieved summaries!" });
+    } catch (error) {
+        console.log("Get summaries error:", error);
+        res.status(500).json({ error: "Error getting summaries." });
+    }
+};
 
 export default router;
